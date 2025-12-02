@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <id>docuseal_integration</id>
+    <name>DocuSeal Integration</name>
+    <summary>Integrate DocuSeal document signing with Nextcloud</summary>
+    <description><![CDATA[
+# DocuSeal Integration for Nextcloud
+
+Send documents for signing directly from Nextcloud Files and automatically save signed documents back.
+
+## Features
+- Right-click on PDFs to send to DocuSeal
+- Select from existing DocuSeal templates
+- Add multiple recipients/signers
+- Track signing status
+- Automatic signed document retrieval
+- Nextcloud notifications on completion
+
+## Requirements
+- DocuSeal instance (self-hosted or cloud)
+- DocuSeal API key
+    ]]></description>
+    <version>1.0.0</version>
+    <licence>agpl</licence>
+    <author mail="info@ctrlaltdef.eu">CtrlAltDef</author>
+    <namespace>DocuSealIntegration</namespace>
+    <category>files</category>
+    <category>integration</category>
+    <category>office</category>
+
+    <bugs>https://github.com/ctrlaltdef/nextcloud-docuseal-app/issues</bugs>
+    <repository>https://github.com/ctrlaltdef/nextcloud-docuseal-app</repository>
+
+    <screenshot>https://raw.githubusercontent.com/ctrlaltdef/nextcloud-docuseal-app/main/img/screenshot.png</screenshot>
+
+    <dependencies>
+        <nextcloud min-version="28" max-version="30"/>
+    </dependencies>
+
+    <settings>
+        <admin>OCA\DocuSealIntegration\Settings\Admin</admin>
+        <admin-section>OCA\DocuSealIntegration\Settings\AdminSection</admin-section>
+    </settings>
+
+    <navigations>
+        <navigation>
+            <name>DocuSeal</name>
+            <route>docuseal_integration.page.index</route>
+            <icon>app.svg</icon>
+            <order>10</order>
+        </navigation>
+    </navigations>
+</info>

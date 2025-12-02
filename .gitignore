@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build output
+js/
+css/*.css
+css/*.css.map
+!css/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+.phpunit.result.cache
+
+# Composer
+composer.lock
+
+# NPM
+package-lock.json
+
+# Misc
+*.log
+*.tmp

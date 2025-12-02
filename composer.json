@@ -1,0 +1,35 @@
+{
+    "name": "ctrlaltdef/docuseal_integration",
+    "description": "DocuSeal Integration for Nextcloud",
+    "type": "project",
+    "license": "AGPL-3.0-or-later",
+    "authors": [
+        {
+            "name": "CtrlAltDef",
+            "email": "info@ctrlaltdef.eu"
+        }
+    ],
+    "require": {
+        "php": "^8.1"
+    },
+    "require-dev": {
+        "nextcloud/ocp": "^28.0",
+        "phpunit/phpunit": "^10.0",
+        "psalm/phar": "^5.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "OCA\\DocuSealIntegration\\": "lib/"
+        }
+    },
+    "scripts": {
+        "lint": "find . -name \\*.php -not -path './vendor/*' -print0 | xargs -0 -n1 php -l",
+        "psalm": "psalm",
+        "test": "phpunit --configuration tests/phpunit.xml"
+    },
+    "config": {
+        "platform": {
+            "php": "8.1"
+        }
+    }
+}
