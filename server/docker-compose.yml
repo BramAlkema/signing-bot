@@ -10,8 +10,6 @@ services:
       - ./data:/var/dendrite
     ports:
       - "8008:8008"
-    environment:
-      - DENDRITE_CONFIG=/etc/dendrite/dendrite.yaml
 
   element:
     image: vectorim/element-web:latest
