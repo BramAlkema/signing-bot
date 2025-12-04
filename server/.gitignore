@@ -1,0 +1,13 @@
+# Data
+data/
+*.db
+*.db-*
+
+# Keys (generated)
+config/matrix_key.pem
+
+# Environment
+.env
+
+# Logs
+*.log

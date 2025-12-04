@@ -1,34 +1,19 @@
-# Dependencies
-node_modules/
-vendor/
+# Server
+server/data/
+server/*.db
+server/config/matrix_key.pem
+server/.env
 
-# Build output
-js/
-css/*.css
-css/*.css.map
-!css/.gitkeep
+# Nextcloud app
+nextcloud-app/node_modules/
+nextcloud-app/vendor/
+nextcloud-app/js/
+nextcloud-app/css/*.css
 
 # IDE
 .idea/
 .vscode/
 *.swp
-*.swo
-*~
 
 # OS
 .DS_Store
-Thumbs.db
-
-# Testing
-coverage/
-.phpunit.result.cache
-
-# Composer
-composer.lock
-
-# NPM
-package-lock.json
-
-# Misc
-*.log
-*.tmp
