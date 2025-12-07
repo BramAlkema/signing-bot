@@ -21,6 +21,8 @@ use Psr\Log\LoggerInterface;
 
 class WebhookController extends Controller
 {
+    private ?string $rawBody = null;
+
     public function __construct(
         IRequest $request,
         private IConfig $config,
@@ -32,6 +34,8 @@ class WebhookController extends Controller
         private LoggerInterface $logger,
     ) {
         parent::__construct(Application::APP_ID, $request);
+        // Capture raw body for signature verification before it's parsed
+        $this->rawBody = file_get_contents('php://input');
     }
 
     /**
@@ -48,25 +52,30 @@ class WebhookController extends Controller
     #[NoCSRFRequired]
     public function handle(): JSONResponse
     {
-        $payload = $this->request->getParams();
+        // Parse payload from raw body to ensure consistency
+        $payload = json_decode($this->rawBody ?? '', true) ?? $this->request->getParams();
         $event = $payload['event_type'] ?? null;
 
+        // Log webhook receipt without sensitive payload data
         $this->logger->info('DocuSeal webhook received', [
             'event' => $event,
-            'payload' => $payload,
+            'submission_id' => $payload['data']['submission_id'] ?? $payload['data']['id'] ?? null,
         ]);
 
-        // Verify webhook signature if configured
+        // Verify webhook signature
         $secret = $this->config->getAppValue(Application::APP_ID, 'webhook_secret');
         if ($secret) {
             $signature = $this->request->getHeader('X-DocuSeal-Signature');
-            if (!$this->verifySignature($payload, $signature, $secret)) {
+            if (!$this->verifySignature($this->rawBody ?? '', $signature, $secret)) {
                 $this->logger->warning('Invalid webhook signature');
                 return new JSONResponse(
                     ['error' => 'Invalid signature'],
                     Http::STATUS_UNAUTHORIZED
                 );
             }
+        } else {
+            // Security warning: webhook secret should be configured in production
+            $this->logger->warning('DocuSeal webhook received without signature verification - configure webhook_secret for security');
         }
 
         try {
@@ -177,8 +186,15 @@ class WebhookController extends Controller
         $userId = $submission->getUserId();
         $userFolder = $this->rootFolder->getUserFolder($userId);
 
+        // Get user's configured folder or use default
+        $signedFolderPath = $this->config->getUserValue(
+            $userId,
+            Application::APP_ID,
+            'signed_documents_folder',
+            'Signed Documents'
+        );
+
         // Create signed documents folder if it doesn't exist
-        $signedFolderPath = 'Signed Documents';
         if (!$userFolder->nodeExists($signedFolderPath)) {
             $userFolder->newFolder($signedFolderPath);
         }
@@ -265,16 +281,20 @@ class WebhookController extends Controller
     }
 
     /**
-     * Verify webhook signature
+     * Verify webhook signature using raw request body
+     *
+     * @param string $rawBody The raw JSON body from the request
+     * @param string|null $signature The signature header value
+     * @param string $secret The webhook secret
+     * @return bool Whether the signature is valid
      */
-    private function verifySignature(array $payload, ?string $signature, string $secret): bool
+    private function verifySignature(string $rawBody, ?string $signature, string $secret): bool
     {
-        if (!$signature) {
+        if (!$signature || empty($rawBody)) {
             return false;
         }
 
-        $payloadJson = json_encode($payload);
-        $expectedSignature = hash_hmac('sha256', $payloadJson, $secret);
+        $expectedSignature = hash_hmac('sha256', $rawBody, $secret);
 
         return hash_equals($expectedSignature, $signature);
     }

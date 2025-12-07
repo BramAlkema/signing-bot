@@ -23,8 +23,8 @@ class Version001000Date20241202 extends SimpleMigrationStep
         /** @var ISchemaWrapper $schema */
         $schema = $schemaClosure();
 
-        if (!$schema->hasTable('docuseal_submissions')) {
-            $table = $schema->createTable('docuseal_submissions');
+        if (!$schema->hasTable('ds_submissions')) {
+            $table = $schema->createTable('ds_submissions');
 
             $table->addColumn('id', Types::BIGINT, [
                 'autoincrement' => true,
@@ -86,10 +86,10 @@ class Version001000Date20241202 extends SimpleMigrationStep
             ]);
 
             $table->setPrimaryKey(['id']);
-            $table->addIndex(['user_id'], 'docuseal_user_idx');
-            $table->addIndex(['docuseal_id'], 'docuseal_dsid_idx');
-            $table->addIndex(['status'], 'docuseal_status_idx');
-            $table->addIndex(['created_at'], 'docuseal_created_idx');
+            $table->addIndex(['user_id'], 'ds_sub_user_idx');
+            $table->addIndex(['docuseal_id'], 'ds_sub_dsid_idx');
+            $table->addIndex(['status'], 'ds_sub_status_idx');
+            $table->addIndex(['created_at'], 'ds_sub_created_idx');
         }
 
         return $schema;

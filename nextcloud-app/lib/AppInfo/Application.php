@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\DocuSealIntegration\AppInfo;
 
 use OCA\DocuSealIntegration\Listener\FileActionListener;
+use OCA\DocuSealIntegration\Notification\Notifier;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -25,12 +26,16 @@ class Application extends App implements IBootstrap
     {
         // Register event listeners
         $context->registerEventListener(NodeCreatedEvent::class, FileActionListener::class);
+
+        // Register notification notifier
+        $context->registerNotifierService(Notifier::class);
+
+        // OCC commands are registered via info.xml
     }
 
     public function boot(IBootContext $context): void
     {
         // Register file actions script
         Util::addScript(self::APP_ID, 'docuseal_integration-fileactions');
-        Util::addStyle(self::APP_ID, 'docuseal_integration-main');
     }
 }

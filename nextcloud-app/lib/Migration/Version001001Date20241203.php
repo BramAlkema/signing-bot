@@ -20,8 +20,8 @@ class Version001001Date20241203 extends SimpleMigrationStep
         /** @var ISchemaWrapper $schema */
         $schema = $schemaClosure();
 
-        if (!$schema->hasTable('docuseal_signing_sessions')) {
-            $table = $schema->createTable('docuseal_signing_sessions');
+        if (!$schema->hasTable('ds_sign_sessions')) {
+            $table = $schema->createTable('ds_sign_sessions');
 
             $table->addColumn('id', Types::BIGINT, [
                 'autoincrement' => true,
@@ -82,10 +82,10 @@ class Version001001Date20241203 extends SimpleMigrationStep
             ]);
 
             $table->setPrimaryKey(['id']);
-            $table->addIndex(['user_id'], 'docuseal_session_user_idx');
-            $table->addIndex(['room_id'], 'docuseal_session_room_idx');
-            $table->addIndex(['document_hash'], 'docuseal_session_hash_idx');
-            $table->addIndex(['status'], 'docuseal_session_status_idx');
+            $table->addIndex(['user_id'], 'ds_sess_user_idx');
+            $table->addIndex(['room_id'], 'ds_sess_room_idx');
+            $table->addIndex(['document_hash'], 'ds_sess_hash_idx');
+            $table->addIndex(['status'], 'ds_sess_status_idx');
         }
 
         return $schema;

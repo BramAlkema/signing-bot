@@ -1,7 +1,5 @@
 # Server
 server/data/
-server/*.db
-server/config/matrix_key.pem
 server/.env
 
 # Nextcloud app

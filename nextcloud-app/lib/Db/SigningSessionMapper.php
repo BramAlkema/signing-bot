@@ -16,7 +16,7 @@ class SigningSessionMapper extends QBMapper
 {
     public function __construct(IDBConnection $db)
     {
-        parent::__construct($db, 'docuseal_signing_sessions', SigningSession::class);
+        parent::__construct($db, 'ds_sign_sessions', SigningSession::class);
     }
 
     /**
@@ -114,13 +114,15 @@ class SigningSessionMapper extends QBMapper
     {
         $qb = $this->db->getQueryBuilder();
 
-        // JSON search - this is a simplistic approach
-        // For production, consider a separate signers table
+        // Escape LIKE wildcards to prevent injection
+        // For production, consider a separate signers table for proper queries
+        $escapedMatrixId = $this->db->escapeLikeParameter($matrixId);
+
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->like(
                 'required_signers',
-                $qb->createNamedParameter('%' . $matrixId . '%')
+                $qb->createNamedParameter('%' . $escapedMatrixId . '%')
             ))
             ->orderBy('created_at', 'DESC');
 

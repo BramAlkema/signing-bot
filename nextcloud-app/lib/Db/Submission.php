@@ -27,8 +27,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setSignedFilePath(?string $signedFilePath)
  * @method string|null getSubmittersJson()
  * @method void setSubmittersJson(?string $submittersJson)
- * @method \DateTime getCreatedAt()
- * @method void setCreatedAt(\DateTime $createdAt)
+ * @method \DateTime|null getCreatedAt()
+ * @method void setCreatedAt(?\DateTime $createdAt)
  * @method \DateTime|null getCompletedAt()
  * @method void setCompletedAt(?\DateTime $completedAt)
  */
@@ -51,6 +51,8 @@ class Submission extends Entity
         $this->addType('id', 'integer');
         $this->addType('docusealId', 'integer');
         $this->addType('templateId', 'integer');
+        $this->addType('createdAt', 'datetime');
+        $this->addType('completedAt', 'datetime');
     }
 
     /**
@@ -81,23 +83,23 @@ class Submission extends Entity
     }
 
     /**
-     * Convert to array for JSON response
+     * Convert to array for JSON response (snake_case for consistency)
      */
     public function toArray(): array
     {
         return [
             'id' => $this->getId(),
-            'userId' => $this->getUserId(),
-            'docusealId' => $this->getDocusealId(),
-            'templateId' => $this->getTemplateId(),
-            'templateName' => $this->getTemplateName(),
+            'user_id' => $this->getUserId(),
+            'docuseal_id' => $this->getDocusealId(),
+            'template_id' => $this->getTemplateId(),
+            'template_name' => $this->getTemplateName(),
             'status' => $this->getStatus(),
-            'originalFilePath' => $this->getOriginalFilePath(),
-            'originalFilename' => $this->getOriginalFilename(),
-            'signedFilePath' => $this->getSignedFilePath(),
+            'original_file_path' => $this->getOriginalFilePath(),
+            'original_filename' => $this->getOriginalFilename(),
+            'signed_file_path' => $this->getSignedFilePath(),
             'submitters' => $this->getSubmitters(),
-            'createdAt' => $this->getCreatedAt()?->format('c'),
-            'completedAt' => $this->getCompletedAt()?->format('c'),
+            'created_at' => $this->getCreatedAt()?->format('c'),
+            'completed_at' => $this->getCompletedAt()?->format('c'),
         ];
     }
 }

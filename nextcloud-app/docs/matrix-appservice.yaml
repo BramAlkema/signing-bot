@@ -1,0 +1,32 @@
+# Matrix Application Service Registration for DocuSeal Bot
+#
+# This file must be registered with the Continuwuity homeserver.
+# Place in /data/appservices/ or configure in continuwuity.toml
+
+id: docuseal-bot
+url: "https://ctrlaltdef.eu"
+
+# Application Service token - bot uses this to auth to homeserver
+as_token: "5b86211689eb6e2452153fb1b48a98ee2a62b54efeefae60dac4a4109d3c194e"
+
+# Homeserver token - homeserver uses this to auth to bot
+hs_token: "c29d24f0dfafa87c4ca3668bddb86f0e3127679f0cbe021e2c1d102037707223"
+
+# The localpart of the bot user (will be @docuseal-bot:matrix.ctrlaltdef.eu)
+sender_localpart: "docuseal-bot"
+
+# Namespaces this appservice is interested in
+namespaces:
+  # Users this appservice manages (exclusive = only we can create these)
+  users:
+    - exclusive: true
+      regex: "@docuseal-.*:matrix\\.ctrlaltdef\\.eu"
+
+  # Room aliases (optional)
+  aliases: []
+
+  # Rooms (optional - receive events from all rooms if empty)
+  rooms: []
+
+# Rate limiting (optional)
+rate_limited: false

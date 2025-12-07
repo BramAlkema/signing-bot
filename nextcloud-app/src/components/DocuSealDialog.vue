@@ -1,7 +1,7 @@
 <template>
     <NcModal
         :show="show"
-        :title="t('docuseal_integration', 'Send to DocuSeal')"
+        :title="t('docuseal_integration', 'Send for Signing')"
         @close="close">
         <div class="docuseal-dialog">
             <h2>{{ t('docuseal_integration', 'Send document for signing') }}</h2>
@@ -25,54 +25,38 @@
                 />
             </div>
 
-            <!-- Recipients -->
+            <!-- User Selection (like sharing) -->
             <div class="form-group">
-                <label>{{ t('docuseal_integration', 'Recipients') }}</label>
-                <div
-                    v-for="(recipient, index) in recipients"
-                    :key="index"
-                    class="recipient-row">
-                    <NcTextField
-                        :value.sync="recipient.name"
-                        :label="t('docuseal_integration', 'Name')"
-                        :placeholder="t('docuseal_integration', 'John Doe')"
-                    />
-                    <NcTextField
-                        :value.sync="recipient.email"
-                        :label="t('docuseal_integration', 'Email')"
-                        :placeholder="t('docuseal_integration', 'john@example.com')"
-                        type="email"
-                    />
-                    <NcButton
-                        v-if="recipients.length > 1"
-                        type="tertiary"
-                        @click="removeRecipient(index)">
-                        <template #icon>
-                            <span class="icon-delete"></span>
-                        </template>
-                    </NcButton>
-                </div>
-                <NcButton
-                    type="secondary"
-                    @click="addRecipient">
-                    <template #icon>
-                        <span class="icon-add"></span>
+                <label>{{ t('docuseal_integration', 'Select signers') }}</label>
+                <NcSelect
+                    v-model="selectedUsers"
+                    :options="userSearchResults"
+                    :loading="searchingUsers"
+                    :filterable="false"
+                    :placeholder="t('docuseal_integration', 'Search users...')"
+                    :multiple="true"
+                    label="displayName"
+                    track-by="uid"
+                    @search="searchUsers">
+                    <template #option="{ option }">
+                        <NcAvatar :user="option.uid" :size="24" />
+                        <span class="user-option">
+                            <span class="user-name">{{ option.displayName }}</span>
+                            <span class="user-id">{{ option.uid }}</span>
+                        </span>
                     </template>
-                    {{ t('docuseal_integration', 'Add recipient') }}
-                </NcButton>
-            </div>
-
-            <!-- Options -->
-            <div class="form-group">
-                <NcCheckboxRadioSwitch
-                    :checked.sync="sendEmail"
-                    type="checkbox">
-                    {{ t('docuseal_integration', 'Send email notification to recipients') }}
-                </NcCheckboxRadioSwitch>
+                    <template #selected-option="{ option }">
+                        <NcAvatar :user="option.uid" :size="20" />
+                        <span>{{ option.displayName }}</span>
+                    </template>
+                </NcSelect>
+                <p class="hint" v-if="selectedUsers.length === 0">
+                    {{ t('docuseal_integration', 'Start typing to search for users') }}
+                </p>
             </div>
 
             <!-- Message -->
-            <div class="form-group" v-if="sendEmail">
+            <div class="form-group">
                 <label for="message">
                     {{ t('docuseal_integration', 'Message (optional)') }}
                 </label>
@@ -106,12 +90,11 @@
 <script>
 import NcModal from '@nextcloud/vue/dist/Components/NcModal.js'
 import NcButton from '@nextcloud/vue/dist/Components/NcButton.js'
-import NcTextField from '@nextcloud/vue/dist/Components/NcTextField.js'
 import NcTextArea from '@nextcloud/vue/dist/Components/NcTextArea.js'
 import NcSelect from '@nextcloud/vue/dist/Components/NcSelect.js'
-import NcCheckboxRadioSwitch from '@nextcloud/vue/dist/Components/NcCheckboxRadioSwitch.js'
 import NcLoadingIcon from '@nextcloud/vue/dist/Components/NcLoadingIcon.js'
-import { generateUrl } from '@nextcloud/router'
+import NcAvatar from '@nextcloud/vue/dist/Components/NcAvatar.js'
+import { generateUrl, generateOcsUrl } from '@nextcloud/router'
 import axios from '@nextcloud/axios'
 
 export default {
@@ -119,11 +102,10 @@ export default {
     components: {
         NcModal,
         NcButton,
-        NcTextField,
         NcTextArea,
         NcSelect,
-        NcCheckboxRadioSwitch,
         NcLoadingIcon,
+        NcAvatar,
     },
     props: {
         filePath: {
@@ -141,14 +123,16 @@ export default {
             loading: false,
             templates: [],
             selectedTemplate: null,
-            recipients: [{ name: '', email: '' }],
-            sendEmail: true,
+            selectedUsers: [],
+            userSearchResults: [],
+            searchingUsers: false,
+            searchTimeout: null,
             message: '',
         }
     },
     computed: {
         isValid() {
-            return this.recipients.some(r => r.email && this.isValidEmail(r.email))
+            return this.selectedUsers.length > 0
         },
         templateOptions() {
             return this.templates.map(t => ({
@@ -171,14 +155,45 @@ export default {
                 console.error('Failed to load templates:', error)
             }
         },
-        addRecipient() {
-            this.recipients.push({ name: '', email: '' })
-        },
-        removeRecipient(index) {
-            this.recipients.splice(index, 1)
-        },
-        isValidEmail(email) {
-            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+        async searchUsers(query) {
+            if (!query || query.length < 2) {
+                this.userSearchResults = []
+                return
+            }
+
+            // Debounce search
+            if (this.searchTimeout) {
+                clearTimeout(this.searchTimeout)
+            }
+
+            this.searchTimeout = setTimeout(async () => {
+                this.searchingUsers = true
+                try {
+                    // Use Nextcloud's sharee search API (same as sharing dialog)
+                    const response = await axios.get(
+                        generateOcsUrl('apps/files_sharing/api/v1/sharees'),
+                        {
+                            params: {
+                                search: query,
+                                itemType: 'file',
+                                perPage: 10,
+                            },
+                        }
+                    )
+
+                    const users = response.data?.ocs?.data?.users || []
+                    this.userSearchResults = users.map(user => ({
+                        uid: user.value.shareWith,
+                        displayName: user.label,
+                        email: user.value.shareWith, // Will resolve on backend
+                    }))
+                } catch (error) {
+                    console.error('Failed to search users:', error)
+                    this.userSearchResults = []
+                } finally {
+                    this.searchingUsers = false
+                }
+            }, 300)
         },
         close() {
             this.show = false
@@ -189,15 +204,18 @@ export default {
 
             this.loading = true
             try {
-                const validRecipients = this.recipients.filter(r => r.email)
+                // Send user IDs - backend will resolve to emails
+                const submitters = this.selectedUsers.map(user => ({
+                    uid: user.uid,
+                    name: user.displayName,
+                }))
 
                 const response = await axios.post(
                     generateUrl('/apps/docuseal_integration/api/send-file'),
                     {
                         file_path: this.filePath,
                         template_id: this.selectedTemplate?.id,
-                        submitters: validRecipients,
-                        send_email: this.sendEmail,
+                        submitters: submitters,
                         message: this.message,
                     }
                 )
@@ -258,6 +276,27 @@ export default {
         margin-top: 20px;
         padding-top: 16px;
         border-top: 1px solid var(--color-border);
+    }
+
+    .user-option {
+        display: flex;
+        flex-direction: column;
+        margin-left: 8px;
+
+        .user-name {
+            font-weight: 500;
+        }
+
+        .user-id {
+            font-size: 0.85em;
+            color: var(--color-text-maxcontrast);
+        }
+    }
+
+    .hint {
+        font-size: 0.85em;
+        color: var(--color-text-maxcontrast);
+        margin-top: 4px;
     }
 }
 </style>

@@ -16,7 +16,7 @@ class SubmissionMapper extends QBMapper
 {
     public function __construct(IDBConnection $db)
     {
-        parent::__construct($db, 'docuseal_submissions', Submission::class);
+        parent::__construct($db, 'ds_submissions', Submission::class);
     }
 
     /**

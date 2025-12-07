@@ -35,8 +35,13 @@ Send documents for signing directly from Nextcloud Files and automatically save 
     <screenshot>https://raw.githubusercontent.com/ctrlaltdef/nextcloud-docuseal-app/main/img/screenshot.png</screenshot>
 
     <dependencies>
-        <nextcloud min-version="28" max-version="30"/>
+        <nextcloud min-version="28" max-version="32"/>
     </dependencies>
+
+    <commands>
+        <command>OCA\DocuSealIntegration\Command\Sign</command>
+        <command>OCA\DocuSealIntegration\Command\SignalWorker</command>
+    </commands>
 
     <settings>
         <admin>OCA\DocuSealIntegration\Settings\Admin</admin>

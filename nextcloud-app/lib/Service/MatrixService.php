@@ -14,6 +14,9 @@ use Psr\Log\LoggerInterface;
  */
 class MatrixService
 {
+    /** Default signing request expiry in seconds (7 days) */
+    private const SIGNING_REQUEST_EXPIRY_SECONDS = 7 * 24 * 3600;
+
     private string $homeserver;
     private string $accessToken;
     private string $botUserId;
@@ -270,7 +273,7 @@ class MatrixService
             ],
             'required_signers' => $requiredSigners,
             'created_at' => time() * 1000,
-            'expires_at' => (time() + 7 * 24 * 3600) * 1000, // 7 days
+            'expires_at' => (time() + self::SIGNING_REQUEST_EXPIRY_SECONDS) * 1000,
             'instructions' => 'Each signer must: 1) Verify other parties, 2) Download and review document, 3) Sign hash with SSH/GPG key, 4) Post signature to this room',
         ]);
 

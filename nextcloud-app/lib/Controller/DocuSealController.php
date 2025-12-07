@@ -13,6 +13,9 @@ use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\Files\IRootFolder;
 use OCP\IRequest;
+use OCP\IUserManager;
+use OCP\Notification\IManager as INotificationManager;
+use Psr\Log\LoggerInterface;
 
 class DocuSealController extends Controller
 {
@@ -21,6 +24,9 @@ class DocuSealController extends Controller
         private DocuSealService $docuSealService,
         private SubmissionMapper $submissionMapper,
         private IRootFolder $rootFolder,
+        private IUserManager $userManager,
+        private INotificationManager $notificationManager,
+        private LoggerInterface $logger,
         private ?string $userId,
     ) {
         parent::__construct(Application::APP_ID, $request);
@@ -90,7 +96,7 @@ class DocuSealController extends Controller
         $filePath = $this->request->getParam('file_path');
         $templateId = $this->request->getParam('template_id');
         $submitters = $this->request->getParam('submitters', []);
-        $sendEmail = $this->request->getParam('send_email', true);
+        $message = $this->request->getParam('message', '');
 
         if (!$filePath || empty($submitters)) {
             return new JSONResponse(
@@ -114,28 +120,117 @@ class DocuSealController extends Controller
             $fileContent = $file->getContent();
             $fileName = $file->getName();
 
+            // Resolve user IDs to emails
+            $resolvedSubmitters = $this->resolveSubmitters($submitters);
+
+            if (empty($resolvedSubmitters)) {
+                return new JSONResponse(
+                    ['error' => 'No valid users found with email addresses'],
+                    Http::STATUS_BAD_REQUEST
+                );
+            }
+
             // Upload to DocuSeal and create submission
+            // Don't send email from DocuSeal - we'll use Nextcloud notifications
             $result = $this->docuSealService->sendFileForSigning(
                 $fileContent,
                 $fileName,
-                $submitters,
-                $sendEmail,
+                $resolvedSubmitters,
+                false, // Don't send DocuSeal emails
                 $templateId
             );
 
             // Store submission for tracking
-            $this->submissionMapper->createFromDocuSeal(
+            $submission = $this->submissionMapper->createFromDocuSeal(
                 $result,
                 $this->userId,
                 $filePath
             );
 
+            // Send Nextcloud notifications to signers
+            $this->notifySigners($resolvedSubmitters, $fileName, $submission->getId(), $message);
+
             return new JSONResponse($result, Http::STATUS_CREATED);
         } catch (\Exception $e) {
+            $this->logger->error('Failed to send file for signing', [
+                'error' => $e->getMessage(),
+                'file' => $filePath,
+            ]);
             return new JSONResponse(
                 ['error' => $e->getMessage()],
                 Http::STATUS_INTERNAL_SERVER_ERROR
             );
+        }
+    }
+
+    /**
+     * Resolve user IDs to email addresses
+     */
+    private function resolveSubmitters(array $submitters): array
+    {
+        $resolved = [];
+
+        foreach ($submitters as $submitter) {
+            $uid = $submitter['uid'] ?? null;
+            $name = $submitter['name'] ?? '';
+
+            if (!$uid) {
+                continue;
+            }
+
+            $user = $this->userManager->get($uid);
+            if (!$user) {
+                $this->logger->warning('User not found', ['uid' => $uid]);
+                continue;
+            }
+
+            $email = $user->getEMailAddress();
+            if (!$email) {
+                $this->logger->warning('User has no email address', ['uid' => $uid]);
+                continue;
+            }
+
+            $resolved[] = [
+                'uid' => $uid,
+                'name' => $name ?: $user->getDisplayName(),
+                'email' => $email,
+            ];
+        }
+
+        return $resolved;
+    }
+
+    /**
+     * Send Nextcloud notifications to signers
+     */
+    private function notifySigners(array $submitters, string $fileName, int $submissionId, string $message): void
+    {
+        foreach ($submitters as $submitter) {
+            $uid = $submitter['uid'] ?? null;
+            if (!$uid) {
+                continue;
+            }
+
+            try {
+                $notification = $this->notificationManager->createNotification();
+                $notification
+                    ->setApp(Application::APP_ID)
+                    ->setUser($uid)
+                    ->setDateTime(new \DateTime())
+                    ->setObject('submission', (string) $submissionId)
+                    ->setSubject('signature_request', [
+                        'file' => $fileName,
+                        'sender' => $this->userId,
+                        'message' => $message,
+                    ]);
+
+                $this->notificationManager->notify($notification);
+            } catch (\Exception $e) {
+                $this->logger->error('Failed to send notification', [
+                    'uid' => $uid,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 

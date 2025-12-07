@@ -123,10 +123,8 @@ const matrixSigningAction = new FileAction({
     },
 })
 
-// Register file actions when the page loads
-if (window.OCA?.Files) {
-    registerFileAction(docuSealAction)
-    registerFileAction(matrixSigningAction)
-}
+// Register file actions - @nextcloud/files handles the registration
+registerFileAction(docuSealAction)
+registerFileAction(matrixSigningAction)
 
 export { docuSealAction, matrixSigningAction }

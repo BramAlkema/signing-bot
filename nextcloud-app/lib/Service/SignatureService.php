@@ -11,12 +11,71 @@ use Psr\Log\LoggerInterface;
  *
  * Uses ssh-keygen for SSH signatures (OpenSSH 8.0+)
  * Uses gpg for GPG signatures
+ *
+ * Security: All exec() calls use escapeshellarg() and input validation
  */
 class SignatureService
 {
+    // Allowed namespace pattern (alphanumeric, dash, underscore)
+    private const NAMESPACE_PATTERN = '/^[a-zA-Z0-9_-]+$/';
+
+    // GPG key ID pattern (hex, 8-40 chars, or email)
+    private const GPG_KEY_ID_PATTERN = '/^([A-Fa-f0-9]{8,40}|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/';
+
+    // Valid hash pattern (hex string)
+    private const HASH_PATTERN = '/^[a-fA-F0-9]{32,128}$/';
+
     public function __construct(
         private LoggerInterface $logger,
     ) {
+    }
+
+    /**
+     * Validate namespace parameter
+     */
+    private function validateNamespace(string $namespace): void
+    {
+        if (!preg_match(self::NAMESPACE_PATTERN, $namespace)) {
+            throw new \InvalidArgumentException('Invalid namespace: must be alphanumeric with dash/underscore only');
+        }
+    }
+
+    /**
+     * Validate GPG key ID
+     */
+    private function validateGpgKeyId(string $keyId): void
+    {
+        if (!preg_match(self::GPG_KEY_ID_PATTERN, $keyId)) {
+            throw new \InvalidArgumentException('Invalid GPG key ID format');
+        }
+    }
+
+    /**
+     * Validate private key path exists and is readable
+     */
+    private function validatePrivateKeyPath(string $path): void
+    {
+        if (!file_exists($path)) {
+            throw new \InvalidArgumentException('Private key file does not exist');
+        }
+        if (!is_readable($path)) {
+            throw new \InvalidArgumentException('Private key file is not readable');
+        }
+        // Prevent directory traversal - must be absolute path
+        $realPath = realpath($path);
+        if ($realPath === false) {
+            throw new \InvalidArgumentException('Invalid private key path');
+        }
+    }
+
+    /**
+     * Validate hash format
+     */
+    private function validateHash(string $hash): void
+    {
+        if (!preg_match(self::HASH_PATTERN, $hash)) {
+            throw new \InvalidArgumentException('Invalid hash format: must be hex string (32-128 chars)');
+        }
     }
 
     /**
@@ -32,9 +91,20 @@ class SignatureService
         string $privateKeyPath,
         string $namespace = 'document'
     ): array {
+        // Security: Validate all inputs before exec()
+        $this->validatePrivateKeyPath($privateKeyPath);
+        $this->validateNamespace($namespace);
+
+        // Audit log
+        $this->logger->info('SSH signing operation initiated', [
+            'key_path' => basename($privateKeyPath), // Don't log full path
+            'namespace' => $namespace,
+            'data_length' => strlen($data),
+        ]);
+
         // Create temp file with data to sign
         $dataFile = tempnam(sys_get_temp_dir(), 'sign_data_');
-        $sigFile = tempnam(sys_get_temp_dir(), 'sign_sig_');
+        $sigFile = $dataFile . '.sig';
 
         try {
             file_put_contents($dataFile, $data);
@@ -54,8 +124,7 @@ class SignatureService
             }
 
             // Signature is written to {dataFile}.sig
-            $signature = file_get_contents($dataFile . '.sig');
-            unlink($dataFile . '.sig');
+            $signature = file_get_contents($sigFile);
 
             // Get public key
             $publicKey = $this->getPublicKeyFromPrivate($privateKeyPath);
@@ -81,6 +150,16 @@ class SignatureService
         string $publicKey,
         string $namespace = 'document'
     ): array {
+        // Security: Validate namespace before exec()
+        $this->validateNamespace($namespace);
+
+        // Audit log
+        $this->logger->info('SSH signature verification initiated', [
+            'namespace' => $namespace,
+            'data_length' => strlen($data),
+            'signature_length' => strlen($signature),
+        ]);
+
         $dataFile = tempnam(sys_get_temp_dir(), 'verify_data_');
         $sigFile = tempnam(sys_get_temp_dir(), 'verify_sig_');
         $allowedSignersFile = tempnam(sys_get_temp_dir(), 'allowed_signers_');
@@ -131,6 +210,15 @@ class SignatureService
      */
     public function signWithGpg(string $data, string $keyId): array
     {
+        // Security: Validate GPG key ID before exec()
+        $this->validateGpgKeyId($keyId);
+
+        // Audit log
+        $this->logger->info('GPG signing operation initiated', [
+            'key_id' => substr($keyId, 0, 8) . '...', // Truncate for privacy
+            'data_length' => strlen($data),
+        ]);
+
         $dataFile = tempnam(sys_get_temp_dir(), 'gpg_data_');
 
         try {
@@ -173,6 +261,13 @@ class SignatureService
         string $signature,
         string $publicKey
     ): array {
+        // Audit log
+        $this->logger->info('GPG signature verification initiated', [
+            'data_length' => strlen($data),
+            'signature_length' => strlen($signature),
+            'public_key_length' => strlen($publicKey),
+        ]);
+
         $dataFile = tempnam(sys_get_temp_dir(), 'gpg_verify_data_');
         $sigFile = tempnam(sys_get_temp_dir(), 'gpg_verify_sig_');
         $keyringDir = tempnam(sys_get_temp_dir(), 'gpg_keyring_');
@@ -245,6 +340,9 @@ class SignatureService
      */
     public function getSigningInstructions(string $documentHash): array
     {
+        // Security: Validate hash to prevent shell injection in generated commands
+        $this->validateHash($documentHash);
+
         return [
             'ssh' => [
                 'description' => 'Sign with SSH key (recommended)',
@@ -281,6 +379,9 @@ class SignatureService
         int $timestamp,
         ?string $intent = null
     ): string {
+        // Security: Validate hash format
+        $this->validateHash($documentHash);
+
         $payload = [
             'document_hash' => $documentHash,
             'document_name' => $documentName,

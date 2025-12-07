@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<psalm
+    errorLevel="5"
+    resolveFromConfigFile="true"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="https://getpsalm.org/schema/config"
+    xsi:schemaLocation="https://getpsalm.org/schema/config vendor/vimeo/psalm/config.xsd"
+    findUnusedBaselineEntry="false"
+    findUnusedCode="false"
+>
+    <projectFiles>
+        <directory name="lib" />
+        <ignoreFiles>
+            <directory name="vendor" />
+        </ignoreFiles>
+    </projectFiles>
+
+    <issueHandlers>
+        <!-- Suppress all Nextcloud-related issues - these are external dependencies -->
+        <UndefinedClass errorLevel="suppress" />
+        <UndefinedAttributeClass errorLevel="suppress" />
+        <MissingDependency errorLevel="suppress" />
+        <UnusedClass errorLevel="suppress" />
+        <PossiblyUnusedMethod errorLevel="suppress" />
+        <PossiblyUnusedParam errorLevel="suppress" />
+        <!-- False positive: constructor ensures timestamp is never null -->
+        <InvalidNullableReturnType>
+            <errorLevel type="suppress">
+                <file name="lib/Bot/Message.php" />
+            </errorLevel>
+        </InvalidNullableReturnType>
+        <NullableReturnStatement>
+            <errorLevel type="suppress">
+                <file name="lib/Bot/Message.php" />
+            </errorLevel>
+        </NullableReturnStatement>
+        <!-- Signal driver socket handling is intentional -->
+        <InvalidPropertyAssignmentValue>
+            <errorLevel type="suppress">
+                <file name="lib/Bot/Drivers/SignalDriver.php" />
+            </errorLevel>
+        </InvalidPropertyAssignmentValue>
+    </issueHandlers>
+</psalm>

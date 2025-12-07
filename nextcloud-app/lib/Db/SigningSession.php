@@ -25,8 +25,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setRequiredSigners(string $requiredSigners)
  * @method string getStatus()
  * @method void setStatus(string $status)
- * @method \DateTime getCreatedAt()
- * @method void setCreatedAt(\DateTime $createdAt)
+ * @method \DateTime|null getCreatedAt()
+ * @method void setCreatedAt(?\DateTime $createdAt)
  * @method \DateTime|null getCompletedAt()
  * @method void setCompletedAt(?\DateTime $completedAt)
  */
@@ -46,6 +46,8 @@ class SigningSession extends Entity
     public function __construct()
     {
         $this->addType('id', 'integer');
+        $this->addType('createdAt', 'datetime');
+        $this->addType('completedAt', 'datetime');
     }
 
     /**
@@ -65,7 +67,7 @@ class SigningSession extends Entity
     }
 
     /**
-     * Convert to array for JSON response
+     * Convert to array for JSON response (snake_case for consistency)
      */
     public function toArray(): array
     {
